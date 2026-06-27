@@ -5,8 +5,11 @@ from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-BOT_TOKEN = "8723820563:AAG3OqDbKZ74hWFdpPneHK9TIRifgCIvHvA"
-ADMIN_ID = 6059284447
+import os
+
+BOT_TOKEN = os.getenv("8723820563:AAG3OqDbKZ74hWFdpPneHK9TIRifgCIvHvA")
+ADMIN_ID = int(os.getenv("6059284447"))
+
 
 DB_FILE = "giveaway.db"
 
