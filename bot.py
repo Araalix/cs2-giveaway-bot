@@ -17,10 +17,24 @@ DB_FILE = "giveaway.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    
+    # Create tables if they don't exist
     c.execute('''CREATE TABLE IF NOT EXISTS giveaways
                  (id INTEGER PRIMARY KEY, name TEXT, prize TEXT, active INTEGER)''')
     c.execute('''CREATE TABLE IF NOT EXISTS participants
                  (giveaway_id INTEGER, user_id INTEGER, username TEXT, joined_at TEXT)''')
+    
+    # Add new columns if they don't exist yet
+    try:
+        c.execute("ALTER TABLE giveaways ADD COLUMN fake_participants INTEGER DEFAULT 0")
+    except:
+        pass  # Column already exists
+    
+    try:
+        c.execute("ALTER TABLE giveaways ADD COLUMN fake_entries INTEGER DEFAULT 0")
+    except:
+        pass  # Column already exists
+    
     conn.commit()
     conn.close()
 
@@ -126,23 +140,56 @@ async def pick_winner(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    c.execute("SELECT id, fake_participants, fake_entries FROM giveaways WHERE active=1")
+    row = c.fetchone()
+    if not row:
+        await update.message.reply_text("No active giveaway.")
+        conn.close()
+        return
+    
+    gid, fake_p, fake_e = row
+    
+    if fake_p and fake_p > 0:
+        await update.message.reply_text(
+            f"Current participants: {fake_p}\n"
+            f"Total entries: {fake_e}"
+        )
+    else:
+        c.execute("SELECT COUNT(*) FROM participants WHERE giveaway_id=?", (gid,))
+        real = c.fetchone()[0]
+        await update.message.reply_text(f"Current participants: {real}")
+    conn.close()
+
+async def fake_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID or len(context.args) < 1:
+        return
+    
+    fake_participants = int(context.args[0])
+    fake_entries = fake_participants + random.randint(200, 900)
+
+    if len(context.args) > 1:
+        fake_entries = int(context.args[1])
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
     c.execute("SELECT id FROM giveaways WHERE active=1")
     row = c.fetchone()
     if not row:
         await update.message.reply_text("No active giveaway.")
         conn.close()
         return
+    
     gid = row[0]
-    c.execute("SELECT COUNT(*) FROM participants WHERE giveaway_id=?", (gid,))
-    count = c.fetchone()[0]
-    await update.message.reply_text(f"Current participants: {count}")
+    c.execute("UPDATE giveaways SET fake_participants = ?, fake_entries = ? WHERE id = ?", 
+              (fake_participants, fake_entries, gid))
+    conn.commit()
     conn.close()
-
-async def fake_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID or not context.args:
-        return
-    num = int(context.args[0])
-    await update.message.reply_text(f"📊 Current giveaway stats:\nParticipants: {num}\nEntries: {num + random.randint(300,1200)}")
+    
+    await update.message.reply_text(
+        f"📊 Fake stats updated!\n"
+        f"Participants: {fake_participants}\n"
+        f"Entries: {fake_entries}"
+    )
 
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
