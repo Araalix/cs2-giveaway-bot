@@ -7,8 +7,9 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 import os
 
-BOT_TOKEN = os.getenv("8723820563:AAG3OqDbKZ74hWFdpPneHK9TIRifgCIvHvA")
-ADMIN_ID = int(os.getenv("6059284447"))
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
 
 
 DB_FILE = "giveaway.db"
